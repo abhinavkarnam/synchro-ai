@@ -1,0 +1,1630 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SynchroCity AI - Vijayanagar Infrastructure & Traffic Twin</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            cyber: {
+              bg: '#0a0e17',
+              surface: '#0f172a',
+              card: '#141e33',
+              border: '#1e293b',
+              accent: '#38bdf8',
+              power: '#f59e0b',
+              traffic: '#06b6d4',
+              water: '#10b981',
+              emergency: '#f43f5e',
+              ai: '#a855f7'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
+    
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      background: radial-gradient(circle at 50% 20%, #111827 0%, #070a12 100%);
+      color: #f1f5f9;
+      min-height: 100vh;
+      overflow-x: hidden;
+      user-select: none;
+    }
+
+    .mono { font-family: 'JetBrains Mono', monospace; }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #0b0f19; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+
+    .card-panel {
+      background: rgba(17, 24, 39, 0.75);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+
+    /* Animated pulse ring for critical nodes */
+    @keyframes pulseRing {
+      0% { transform: scale(0.8); opacity: 1; }
+      100% { transform: scale(2.2); opacity: 0; }
+    }
+    .pulse-ring {
+      animation: pulseRing 1.8s cubic-bezier(0.2, 0.8, 0.2, 1) infinite;
+    }
+
+    /* Toast animation */
+    @keyframes slideDown {
+      from { transform: translateY(-40px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+    .toast-slide {
+      animation: slideDown 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+
+    /* Shimmer effect for buttons */
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    .btn-shimmer {
+      background-size: 200% auto;
+      animation: shimmer 4s linear infinite;
+    }
+  </style>
+</head>
+<body class="flex flex-col min-h-screen text-slate-100">
+
+  <!-- ========================================== -->
+  <!-- FLOATING INCOMING CITIZEN REPORT TOAST     -->
+  <!-- ========================================== -->
+  <div id="admin-incident-toast" class="hidden fixed top-20 right-6 z-50 max-w-md w-full bg-slate-900/95 border-2 border-emerald-500 rounded-2xl p-4 shadow-2xl backdrop-blur-xl toast-slide">
+    <div class="flex items-start justify-between gap-3">
+      <div class="flex items-start gap-3">
+        <div class="h-10 w-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400 shrink-0 animate-bounce">
+          <i data-lucide="bell-ring" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="text-xs font-black uppercase text-emerald-400">Citizen Ground Report</span>
+            <span id="toast-inc-id" class="text-[10px] mono bg-slate-800 px-1.5 py-0.5 rounded text-slate-300">#VJY-4891</span>
+          </div>
+          <h4 id="toast-inc-title" class="font-bold text-sm text-white mt-0.5">Burst Cauvery Water Main</h4>
+          <p id="toast-inc-desc" class="text-xs text-slate-300 line-clamp-1 mt-0.5">Vijayanagar Pipeline Road · Maruti Mandir Jn</p>
+        </div>
+      </div>
+      <button onclick="dismissToast()" class="text-slate-400 hover:text-white p-1">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+    </div>
+    
+    <div class="mt-3 pt-3 border-t border-slate-800 flex items-center justify-between">
+      <span class="text-[10px] text-slate-400 flex items-center gap-1">
+        <i data-lucide="camera" class="w-3 h-3 text-cyan-400"></i> Photo Attached &bull; Vijayanagar Ward 123
+      </span>
+      <button onclick="openVerificationFromToast()" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="scan" class="w-3.5 h-3.5"></i> Inspect & Verify
+      </button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- TOP APP BAR                                -->
+  <!-- ========================================== -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md sticky top-0 z-40 px-5 py-3 flex items-center justify-between">
+    <div class="flex items-center gap-3">
+      <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-cyan-500 via-indigo-600 to-purple-600 flex items-center justify-center shadow-lg shadow-cyan-500/20">
+        <i data-lucide="network" class="w-5 h-5 text-white"></i>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-cyan-400 bg-clip-text text-transparent">SynchroCity AI</span>
+          <span class="px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Vijayanagar Sector</span>
+        </div>
+        <p class="text-[11px] text-slate-400">Autonomous Cross-Infrastructure Digital Twin &bull; Bengaluru West</p>
+      </div>
+    </div>
+
+    <!-- Quick Status Badges -->
+    <div class="hidden lg:flex items-center gap-6 text-xs">
+      <div class="flex items-center gap-2">
+        <div id="vitals-status-dot" class="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+        <span class="text-slate-400">System State:</span>
+        <span id="vitals-status-badge" class="font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">EQUILIBRIUM</span>
+      </div>
+      <div class="h-4 w-px bg-slate-800"></div>
+      <div>
+        <span class="text-slate-400">Sector:</span>
+        <span class="font-semibold text-slate-200 ml-1">West of Chord &bull; Pipeline Rd</span>
+      </div>
+    </div>
+
+    <!-- Top Action Buttons -->
+    <div class="flex items-center gap-2">
+      <!-- Citizen Portal Link -->
+      <a href="citizen.html" target="_blank" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-emerald-300 border border-emerald-500/30 transition flex items-center gap-1.5">
+        <i data-lucide="external-link" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Citizen Portal</span>
+      </a>
+
+      <!-- Pending Reports -->
+      <button onclick="openCitizenModal()" id="btn-admin-verify" class="relative px-3 py-1.5 text-xs font-bold rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/40 transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="camera" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <span>Citizen Reports</span>
+        <span id="badge-incident-count" class="px-1.5 py-0.2 rounded-full text-[9px] bg-emerald-500 text-slate-950 font-black">1 Pending</span>
+      </button>
+
+      <!-- Audio Mute -->
+      <button onclick="toggleAudio()" id="btn-audio" title="Toggle Sound FX" class="p-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition cursor-pointer">
+        <i id="audio-icon" data-lucide="volume-2" class="w-4 h-4 text-cyan-400"></i>
+      </button>
+
+      <!-- Pitch Slides -->
+      <button onclick="openSlideDeck()" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-slate-800 hover:bg-slate-700 text-cyan-300 border border-cyan-500/30 transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="presentation" class="w-3.5 h-3.5 text-cyan-400"></i>
+        <span class="hidden sm:inline">Slides</span>
+      </button>
+
+      <!-- Giant 60s Jury Demo Button -->
+      <button onclick="toggleAutoPilot()" id="btn-autopilot" class="px-4 py-2 text-xs font-black rounded-xl bg-gradient-to-r from-purple-600 via-indigo-600 to-cyan-500 hover:from-purple-500 hover:to-cyan-400 text-white shadow-lg shadow-purple-500/30 transition flex items-center gap-2 cursor-pointer btn-shimmer">
+        <i id="autopilot-icon" data-lucide="play" class="w-4 h-4 fill-white"></i>
+        <span id="autopilot-text">▶ 60s Jury Presentation</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================== -->
+  <!-- JURY PRESENTATION BANNER (AUTO-PILOT)      -->
+  <!-- ========================================== -->
+  <div id="autopilot-banner" class="hidden bg-gradient-to-r from-purple-900/90 via-indigo-900/90 to-slate-900/90 border-b border-purple-500/40 px-6 py-2.5 flex items-center justify-between text-xs transition-all z-30 shadow-xl">
+    <div class="flex items-center gap-3">
+      <span class="px-2.5 py-0.5 rounded-full bg-purple-500/30 text-purple-200 font-extrabold uppercase text-[10px] tracking-wider animate-pulse flex items-center gap-1 border border-purple-400/40">
+        <i data-lucide="radio" class="w-3 h-3"></i> Jury Demo In Progress
+      </span>
+      <span id="autopilot-caption" class="text-white font-semibold text-sm">Demonstrating cross-infrastructure cascading failure in Vijayanagar...</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <span id="autopilot-step-badge" class="mono text-cyan-300 text-xs font-bold">Step 1/5</span>
+      <button onclick="stopAutoPilot()" class="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold">Exit Demo</button>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 3 HERO KPI CARDS FOR JURY (MEMORABLE)     -->
+  <!-- ========================================== -->
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-3.5 px-5 pt-4 max-w-[1920px] mx-auto w-full">
+    <!-- 1. Resilience -->
+    <div class="card-panel p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">Vijayanagar City Resilience</span>
+        <div class="flex items-baseline gap-2">
+          <span id="vitals-resilience" class="mono text-3xl font-black text-emerald-400">96.4%</span>
+          <span id="resilience-tag" class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">Equilibrium</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">Cross-system stability score across power, water, & traffic</p>
+      </div>
+      <div class="h-12 w-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+        <i data-lucide="shield-check" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <!-- 2. Traffic Flow -->
+    <div class="card-panel p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">West of Chord Road Arterial</span>
+        <div class="flex items-baseline gap-2">
+          <span id="vitals-traffic" class="mono text-3xl font-black text-cyan-400">38 km/h</span>
+          <span id="traffic-tag" class="text-xs font-bold text-cyan-400 bg-cyan-500/10 px-2 py-0.5 rounded-full">Fluid Flow</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">Vijayanagar TTMC & Metro corridor throughput</p>
+      </div>
+      <div class="h-12 w-12 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+        <i data-lucide="car" class="w-6 h-6"></i>
+      </div>
+    </div>
+
+    <!-- 3. Emergency Trauma Response -->
+    <div class="card-panel p-4 rounded-2xl border border-slate-800 flex items-center justify-between">
+      <div>
+        <span class="text-xs text-slate-400 font-semibold uppercase tracking-wider block mb-1">BGS Trauma Ambulance Clearway</span>
+        <div class="flex items-baseline gap-2">
+          <span id="vitals-emg" class="mono text-3xl font-black text-rose-400">4.2 min</span>
+          <span id="emg-tag" class="text-xs font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">Optimal Priority</span>
+        </div>
+        <p class="text-[11px] text-slate-400 mt-1">Life-safety emergency corridor response time</p>
+      </div>
+      <div class="h-12 w-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+        <i data-lucide="ambulance" class="w-6 h-6"></i>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- MAIN APP GRID                              -->
+  <!-- ========================================== -->
+  <main class="flex-1 grid grid-cols-12 gap-4 p-4 lg:p-5 max-w-[1920px] mx-auto w-full">
+
+    <!-- LEFT COLUMN: MAP & CONTROLS (8 Cols) -->
+    <div class="col-span-12 xl:col-span-8 flex flex-col gap-4">
+
+      <!-- SCENARIO & STRESS INJECTOR BAR -->
+      <div class="card-panel p-3.5 rounded-2xl flex flex-wrap items-center justify-between gap-3 border border-slate-800 shadow-xl">
+        <div class="flex items-center gap-2">
+          <span class="text-xs uppercase font-extrabold tracking-wider text-slate-400 flex items-center gap-1.5">
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+            Inject Crisis:
+          </span>
+          <div class="flex flex-wrap items-center gap-1.5">
+            <button onclick="runScenario('flood')" id="btn-flood" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/40 transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="cloud-rain" class="w-3.5 h-3.5 text-cyan-400"></i>
+              Pipeline Road Water Rupture
+            </button>
+            <button onclick="runScenario('heatwave')" id="btn-heatwave" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/40 transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="sun" class="w-3.5 h-3.5 text-amber-400"></i>
+              BESCOM RPC Substation Overheat
+            </button>
+            <button onclick="runScenario('transit')" id="btn-transit" class="px-3 py-1.5 text-xs font-bold rounded-xl bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/40 transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="train" class="w-3.5 h-3.5 text-purple-400"></i>
+              Vijayanagar TTMC Metro Gridlock
+            </button>
+          </div>
+        </div>
+
+        <!-- Timeline scrubber -->
+        <div class="flex items-center gap-2">
+          <span class="text-xs text-slate-400">Timeline:</span>
+          <div class="flex items-center bg-slate-900 rounded-xl p-1 border border-slate-800 text-xs font-bold">
+            <button onclick="setTimelineStep(0)" id="t-btn-0" class="px-2.5 py-1 rounded-lg bg-cyan-500 text-slate-950 font-black">T+0m</button>
+            <button onclick="setTimelineStep(1)" id="t-btn-1" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white">T+15m</button>
+            <button onclick="setTimelineStep(2)" id="t-btn-2" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white">T+30m</button>
+            <button onclick="setTimelineStep(3)" id="t-btn-3" class="px-2.5 py-1 rounded-lg text-slate-400 hover:text-white">T+60m</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLEAN, ATTRACTIVE VIJAYANAGAR DIGITAL TWIN MAP -->
+      <div class="relative card-panel rounded-3xl border border-slate-800/90 shadow-2xl overflow-hidden flex-1 min-h-[540px] flex flex-col bg-slate-950">
+        
+        <!-- Map Top Badges -->
+        <div class="absolute top-4 left-5 z-20 flex items-center gap-2.5 pointer-events-none">
+          <div class="px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-slate-900/90 text-cyan-300 border border-slate-700/80 backdrop-blur-md flex items-center gap-2 shadow-xl">
+            <span class="w-2 h-2 rounded-full bg-cyan-400 animate-ping"></span>
+            Vijayanagar Sector Twin &bull; Bengaluru West
+          </div>
+          <div id="cascade-alert-pill" class="hidden px-3 py-1.5 rounded-xl text-xs font-extrabold uppercase tracking-wider bg-rose-500/20 text-rose-300 border border-rose-500/40 animate-pulse flex items-center gap-1.5 shadow-xl">
+            <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+            Active Domino Ripple
+          </div>
+        </div>
+
+        <!-- Traffic Speed Indicator -->
+        <div class="absolute top-4 right-5 z-20 flex items-center gap-2 bg-slate-900/90 border border-slate-700/80 px-3.5 py-1.5 rounded-xl text-xs backdrop-blur-md shadow-xl">
+          <span class="text-slate-400">Traffic:</span>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[10px] text-slate-500">Fluid</span>
+            <div class="w-16 h-2 rounded-full bg-gradient-to-r from-emerald-500 via-amber-400 to-rose-600"></div>
+            <span class="text-[10px] text-slate-500">Gridlock</span>
+          </div>
+          <span id="traffic-legend-status" class="mono text-emerald-400 font-bold ml-1">38 km/h</span>
+        </div>
+
+        <!-- CANVAS: VECTOR-SMOOTH VIJAYANAGAR TWIN -->
+        <canvas id="twinCanvas" class="w-full h-full flex-1 cursor-pointer block min-h-[500px]"></canvas>
+
+        <!-- Node Inspector Drawer (Bottom Slide-Up) -->
+        <div id="node-inspector" class="absolute bottom-0 inset-x-0 bg-slate-950/95 border-t border-slate-800 p-4 transition-all duration-300 backdrop-blur-xl translate-y-full flex flex-col md:flex-row items-start md:items-center justify-between gap-4 z-30">
+          <div class="flex items-center gap-3">
+            <div id="inspector-badge" class="w-11 h-11 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 font-bold text-sm">
+              PWR
+            </div>
+            <div>
+              <div class="flex items-center gap-2">
+                <h4 id="inspector-title" class="font-bold text-slate-100 text-sm">BESCOM Vijayanagar 66/11kV Substation</h4>
+                <span id="inspector-status" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-300">LOAD: 64%</span>
+              </div>
+              <p id="inspector-desc" class="text-xs text-slate-400 mt-0.5">Primary power feeder for RPC Layout, West of Chord Road traffic lights, and BWSSB reservoir pumps.</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-6 text-xs">
+            <div>
+              <span class="text-slate-400 block">Upstream Feed:</span>
+              <span id="inspector-upstream" class="font-semibold text-slate-200">KPTCL Peenya 220kV Grid Line</span>
+            </div>
+            <div>
+              <span class="text-slate-400 block">Downstream Cascades:</span>
+              <span id="inspector-downstream" class="font-semibold text-rose-400">West of Chord Road, Maruti Mandir, BGS Hospital</span>
+            </div>
+            <button onclick="closeInspector()" class="p-1.5 rounded-lg hover:bg-slate-800 text-slate-400 hover:text-white cursor-pointer">
+              <i data-lucide="x" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- BOTTOM 4 QUICK VITALS -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-3.5">
+        <div class="card-panel p-3.5 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-400 font-semibold">BESCOM RPC Substation</span>
+            <i data-lucide="zap" class="w-4 h-4 text-amber-400"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="metric-power-val" class="mono text-2xl font-bold text-amber-400">64 MW</span>
+            <span id="metric-power-pct" class="text-xs text-slate-400">Nominal</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div id="metric-power-bar" class="bg-amber-400 h-full rounded-full transition-all duration-500" style="width: 62%"></div>
+          </div>
+        </div>
+
+        <div class="card-panel p-3.5 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-400 font-semibold">West of Chord Flow</span>
+            <i data-lucide="car" class="w-4 h-4 text-cyan-400"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="metric-traffic-val" class="mono text-2xl font-bold text-cyan-400">38 km/h</span>
+            <span id="metric-traffic-pct" class="text-xs text-slate-400">Fluid</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div id="metric-traffic-bar" class="bg-cyan-400 h-full rounded-full transition-all duration-500" style="width: 85%"></div>
+          </div>
+        </div>
+
+        <div class="card-panel p-3.5 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-400 font-semibold">Vijayanagar GLR Pumping</span>
+            <i data-lucide="droplet" class="w-4 h-4 text-emerald-400"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="metric-water-val" class="mono text-2xl font-bold text-emerald-400">92 PSI</span>
+            <span id="metric-water-pct" class="text-xs text-slate-400">Nominal</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div id="metric-water-bar" class="bg-emerald-400 h-full rounded-full transition-all duration-500" style="width: 92%"></div>
+          </div>
+        </div>
+
+        <div class="card-panel p-3.5 rounded-xl border border-slate-800">
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs text-slate-400 font-semibold">BGS Trauma Corridor</span>
+            <i data-lucide="ambulance" class="w-4 h-4 text-rose-400"></i>
+          </div>
+          <div class="flex items-baseline gap-2">
+            <span id="metric-emg-val" class="mono text-2xl font-bold text-rose-400">4.2 min</span>
+            <span id="metric-emg-pct" class="text-xs text-slate-400">Clearway</span>
+          </div>
+          <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+            <div id="metric-emg-bar" class="bg-rose-400 h-full rounded-full transition-all duration-500" style="width: 95%"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: AI BRAIN & MITIGATION PLAYBOOK (4 Cols) -->
+    <div class="col-span-12 xl:col-span-4 flex flex-col gap-4">
+
+      <!-- AI CROSS-IMPACT BRAIN -->
+      <div class="card-panel p-5 rounded-3xl border border-slate-800 relative overflow-hidden flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between mb-3.5">
+          <div class="flex items-center gap-2">
+            <div class="h-8 w-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+              <i data-lucide="sparkles" class="w-4 h-4 text-purple-400"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-sm tracking-wide text-white">AI Cross-Impact Brain</h3>
+              <p class="text-[10px] text-slate-400">Predictive Cross-Infrastructure Intelligence</p>
+            </div>
+          </div>
+          <span id="ai-status-badge" class="px-2.5 py-0.5 text-[10px] font-extrabold rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30 uppercase">MONITORING</span>
+        </div>
+
+        <!-- AI Alert Card -->
+        <div id="ai-alert-box" class="p-3.5 rounded-2xl bg-slate-900/90 border border-slate-800 mb-3.5 transition-all duration-300">
+          <div class="flex items-start gap-2.5">
+            <i id="ai-alert-icon" data-lucide="check-circle" class="w-4 h-4 text-emerald-400 mt-0.5"></i>
+            <div class="flex-1">
+              <h5 id="ai-alert-title" class="text-xs font-bold text-emerald-300">Vijayanagar Sector In Equilibrium</h5>
+              <p id="ai-alert-text" class="text-xs text-slate-400 mt-1 leading-relaxed">
+                BESCOM RPC Substation, West of Chord Road traffic, and BWSSB Pipeline Road reservoir operating within safe parameters.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Domino Risk Probability Bar -->
+        <div class="mb-4">
+          <div class="flex justify-between text-xs mb-1.5">
+            <span class="text-slate-400 font-medium">Cascading Ripple Risk:</span>
+            <span id="cascade-probability" class="mono font-bold text-slate-400">0% Risk</span>
+          </div>
+          <div class="w-full bg-slate-900 h-2.5 rounded-full overflow-hidden border border-slate-800">
+            <div id="cascade-prob-bar" class="bg-cyan-500 h-full rounded-full transition-all duration-500" style="width: 4%"></div>
+          </div>
+        </div>
+
+        <!-- Autonomous Action Plan -->
+        <div class="border-t border-slate-800/80 pt-3.5 mt-auto">
+          <div class="flex items-center justify-between mb-2.5">
+            <span class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+              <i data-lucide="shield-alert" class="w-3.5 h-3.5 text-purple-400"></i>
+              Pre-Emptive Action Plan
+            </span>
+            <span id="playbook-steps-count" class="text-[10px] text-slate-500">Standby</span>
+          </div>
+
+          <div id="playbook-list" class="space-y-2 mb-4">
+            <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/60 text-xs text-slate-400 flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>West of Chord Road Green-Wave</span>
+              <span class="text-[10px] text-slate-500">Autonomous</span>
+            </div>
+            <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/60 text-xs text-slate-400 flex items-center justify-between">
+              <span class="flex items-center gap-2"><span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>Pipeline Road Main Valve Isolation</span>
+              <span class="text-[10px] text-slate-500">Passive</span>
+            </div>
+          </div>
+
+          <!-- Deploy AI Mitigation Button -->
+          <button id="btn-mitigate" onclick="deployMitigation()" disabled class="w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-800 text-slate-500 cursor-not-allowed transition flex items-center justify-center gap-2 shadow-lg">
+            <i data-lucide="zap" class="w-4 h-4"></i>
+            Deploy AI Auto-Mitigation Playbook
+          </button>
+        </div>
+      </div>
+
+      <!-- LIVE CAUSAL STREAM LOG -->
+      <div class="card-panel p-4 rounded-3xl border border-slate-800 flex-1 flex flex-col shadow-2xl">
+        <div class="flex items-center justify-between mb-2.5">
+          <div class="flex items-center gap-2">
+            <i data-lucide="activity" class="w-4 h-4 text-cyan-400"></i>
+            <h4 class="font-bold text-xs uppercase tracking-wider text-slate-200">Vijayanagar Causal Telemetry</h4>
+          </div>
+          <span class="text-[10px] mono text-slate-400" id="live-time">15:15:00 IST</span>
+        </div>
+
+        <div id="ripple-log" class="flex-1 overflow-y-auto space-y-2 max-h-[260px] pr-1 mono text-[11px]">
+          <div class="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 flex items-start gap-2">
+            <span class="text-cyan-400 font-bold">[INIT]</span>
+            <div class="flex-1">
+              <span class="text-slate-200">Vijayanagar Digital Twin initialized.</span>
+              <span class="block text-[10px] text-slate-500 mt-0.5">West of Chord Road, Pipeline Road, RPC Layout online.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ========================================== -->
+  <!-- CITIZEN INCIDENT & AI VERIFICATION MODAL   -->
+  <!-- ========================================== -->
+  <div id="citizen-modal" class="fixed inset-0 bg-black/85 backdrop-blur-xl z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-emerald-500/40 rounded-3xl max-w-4xl w-full p-6 lg:p-8 shadow-2xl relative max-h-[92vh] overflow-y-auto">
+      
+      <button onclick="closeCitizenModal()" class="absolute top-6 right-6 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="flex items-center gap-3 mb-6">
+        <div class="h-12 w-12 rounded-2xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
+          <i data-lucide="camera" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h2 class="text-2xl font-black text-white">Vijayanagar Incident & AI Photo Verification</h2>
+            <span class="px-2 py-0.5 text-[10px] font-bold rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 uppercase">Municipal Telemetry</span>
+          </div>
+          <p class="text-xs text-slate-400">Citizen submitted photo from Pipeline Road; Municipal AI verifies rupture before injecting ripple into city twin.</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+        <!-- Submission details -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-4">
+              <span class="text-xs font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
+                <i data-lucide="user" class="w-4 h-4"></i> Citizen Telemetry Metadata
+              </span>
+              <span id="disp-citizen-id" class="text-[10px] mono text-emerald-400">ID: #VJY-88492</span>
+            </div>
+
+            <div class="mb-3">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Reported By</label>
+              <div id="disp-citizen-name" class="font-bold text-sm text-white">Aarav Sharma (Vijayanagar Resident)</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Category & Location</label>
+              <div id="disp-report-category" class="font-semibold text-xs text-cyan-300">Burst Cauvery Water Main / Road Flooding</div>
+              <div id="disp-report-loc" class="text-xs text-slate-300">Vijayanagar Pipeline Road · Maruti Mandir Jn</div>
+            </div>
+
+            <div class="mb-3">
+              <label class="block text-[11px] font-semibold text-slate-400 mb-0.5">Citizen Ground Observations</label>
+              <p id="disp-report-desc" class="text-xs text-slate-300 bg-slate-900 p-3 rounded-xl border border-slate-800 leading-relaxed">
+                Massive water geyser from ruptured 36-inch Cauvery main on Pipeline Road! Maruti Mandir junction submerged under 2.5 feet of water, traffic diverting to West of Chord Road, RPC Layout electrical vault threatened.
+              </p>
+            </div>
+          </div>
+
+          <div class="pt-3 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <span>Transmission: BroadcastChannel</span>
+            <span class="mono text-emerald-400">&check; Authenticated</span>
+          </div>
+        </div>
+
+        <!-- AI Image Verification Box -->
+        <div class="p-5 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between mb-3">
+              <span class="text-xs font-bold uppercase tracking-wider text-cyan-400 flex items-center gap-1.5">
+                <i data-lucide="cpu" class="w-4 h-4"></i> Computer Vision Scan
+              </span>
+              <span class="px-2 py-0.5 rounded text-[10px] font-bold bg-cyan-500/20 text-cyan-300">CONFIDENCE: 98.6%</span>
+            </div>
+
+            <!-- Image Viewport -->
+            <div class="relative w-full h-44 rounded-xl overflow-hidden border border-slate-800 bg-slate-900 flex items-center justify-center mb-3">
+              <img id="disp-modal-image" src="" alt="Citizen Evidence" class="w-full h-full object-cover">
+              
+              <!-- Scanning laser effect -->
+              <div class="absolute inset-0 bg-gradient-to-b from-transparent via-cyan-400/20 to-transparent pointer-events-none animate-pulse"></div>
+
+              <div class="absolute bottom-2 left-2 bg-slate-950/85 px-2 py-1 rounded text-[10px] mono text-cyan-300 border border-cyan-500/30">
+                SCADA Match: Pressure Drop 92 &rarr; 41 PSI
+              </div>
+            </div>
+
+            <div class="space-y-1.5 text-xs">
+              <div class="flex justify-between text-slate-400">
+                <span>Rupture Cavity Size:</span>
+                <span class="font-bold text-white">36-inch Main Feed</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>Surface Water Spread:</span>
+                <span class="font-bold text-rose-400">2.5 ft depth (Critical)</span>
+              </div>
+              <div class="flex justify-between text-slate-400">
+                <span>Cascading Threat Vector:</span>
+                <span class="font-bold text-amber-400">BESCOM Substation (150m)</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800">
+            <button id="btn-inject-ripple" onclick="authorityInjectRipple()" class="w-full py-3 rounded-xl bg-gradient-to-r from-rose-600 via-indigo-600 to-cyan-500 hover:from-rose-500 hover:to-cyan-400 text-white font-black text-xs uppercase shadow-lg shadow-rose-500/25 transition flex items-center justify-center gap-2 cursor-pointer animate-pulse">
+              <i data-lucide="play" class="w-4 h-4"></i> Approve & Inject Domino Ripple
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- 5-SLIDE PITCH DECK MODAL                   -->
+  <!-- ========================================== -->
+  <div id="slides-modal" class="fixed inset-0 bg-black/90 backdrop-blur-2xl z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-cyan-500/30 rounded-3xl max-w-4xl w-full p-8 shadow-2xl relative">
+      <button onclick="closeSlideDeck()" class="absolute top-6 right-6 p-2 rounded-xl bg-slate-800 text-slate-400 hover:text-white transition cursor-pointer">
+        <i data-lucide="x" class="w-5 h-5"></i>
+      </button>
+
+      <div class="mb-6 flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-cyan-400 uppercase tracking-widest">Jury Pitch Deck</span>
+          <span class="text-xs text-slate-500">&bull; Problem Statement #2</span>
+        </div>
+        <span id="slide-number-indicator" class="mono text-xs font-bold text-slate-400">Slide 1 / 5</span>
+      </div>
+
+      <!-- Slide Container -->
+      <div id="slide-content" class="min-h-[300px] flex flex-col justify-center">
+        <!-- Injected via JS -->
+      </div>
+
+      <!-- Controls -->
+      <div class="flex items-center justify-between pt-6 border-t border-slate-800 mt-6">
+        <button onclick="prevSlide()" class="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+          <i data-lucide="chevron-left" class="w-4 h-4"></i> Previous
+        </button>
+        <div class="flex items-center gap-2" id="slide-dots">
+          <!-- Dots injected via JS -->
+        </div>
+        <button onclick="nextSlide()" class="px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-extrabold transition flex items-center gap-1.5 cursor-pointer">
+          Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========================================== -->
+  <!-- SCRIPT: ENGINE & INTERACTIVE TWIN          -->
+  <!-- ========================================== -->
+  <script>
+    // --- VIJAYANAGAR NODES (GEOGRAPHICALLY ACCURATE) ---
+    const nodes = [
+      { id: 'bescom_rpc', name: 'BESCOM RPC Substation', type: 'power', x: 220, y: 260, load: 64, status: 'nominal', label: '66/11kV Substation' },
+      { id: 'vjy_metro_ttmc', name: 'Vijayanagar TTMC & Metro', type: 'traffic', x: 440, y: 220, load: 48, status: 'nominal', label: 'Traffic & Transit Hub' },
+      { id: 'maruti_mandir_jn', name: 'Maruti Mandir Jn', type: 'traffic', x: 580, y: 260, load: 45, status: 'nominal', label: 'Pipeline Rd Crossing' },
+      { id: 'bwssb_glr', name: 'BWSSB Vijayanagar GLR', type: 'water', x: 380, y: 340, load: 65, status: 'nominal', label: 'Ground Reservoir' },
+      { id: 'bgs_hospital', name: 'BGS Gleneagles Hospital', type: 'emergency', x: 490, y: 410, load: 42, status: 'nominal', label: 'Level-1 Trauma Care' },
+      { id: 'tollgate_magadi', name: 'Magadi Rd Toll Gate', type: 'traffic', x: 620, y: 100, load: 52, status: 'nominal', label: 'North Entrance' }
+    ];
+
+    // Arterial road paths
+    const roads = [
+      // West of Chord Road (Main spine running through TTMC)
+      { name: 'West of Chord Road', points: [{x: 440, y: 40}, {x: 440, y: 220}, {x: 460, y: 350}, {x: 480, y: 480}], speed: 38, status: 'fluid' },
+      // Pipeline Road (Running east-west across Vijayanagar)
+      { name: 'Vijayanagar Pipeline Road', points: [{x: 100, y: 260}, {x: 220, y: 260}, {x: 440, y: 240}, {x: 580, y: 260}, {x: 740, y: 260}], speed: 36, status: 'fluid' },
+      // Magadi Road
+      { name: 'Magadi Road', points: [{x: 280, y: 70}, {x: 460, y: 85}, {x: 620, y: 100}, {x: 750, y: 110}], speed: 35, status: 'fluid' },
+      // Hospital Corridor
+      { name: '17th Cross Hospital Link', points: [{x: 440, y: 220}, {x: 490, y: 410}], speed: 40, status: 'fluid' }
+    ];
+
+    // Colors
+    const typeColors = {
+      power: '#f59e0b',
+      traffic: '#06b6d4',
+      water: '#10b981',
+      emergency: '#f43f5e'
+    };
+
+    let activeScenario = null;
+    let currentTimelineStep = 0;
+    let isMitigated = false;
+    let autoPilotActive = false;
+    let autoPilotStep = 0;
+    let autoPilotTimer = null;
+
+    // Traffic particles
+    let particles = [];
+    function initParticles() {
+      particles = [];
+      roads.forEach((road, rIdx) => {
+        for (let i = 0; i < 6; i++) {
+          particles.push({
+            roadIndex: rIdx,
+            progress: i / 6,
+            speed: 0.003
+          });
+        }
+      });
+    }
+
+    // --- CANVAS RENDERING (CLEAN, SHARP, ATTRACTIVE) ---
+    const canvas = document.getElementById('twinCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      const rect = canvas.getBoundingClientRect();
+      canvas.width = rect.width * window.devicePixelRatio;
+      canvas.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function getInterpolatedPoint(points, t) {
+      if (points.length === 2) {
+        return {
+          x: points[0].x + (points[1].x - points[0].x) * t,
+          y: points[0].y + (points[1].y - points[0].y) * t
+        };
+      }
+      const segmentCount = points.length - 1;
+      const seg = Math.min(Math.floor(t * segmentCount), segmentCount - 1);
+      const subT = (t * segmentCount) - seg;
+      const p1 = points[seg];
+      const p2 = points[seg + 1];
+      return {
+        x: p1.x + (p2.x - p1.x) * subT,
+        y: p1.y + (p2.y - p1.y) * subT
+      };
+    }
+
+    function renderMap() {
+      const rect = canvas.getBoundingClientRect();
+      const w = rect.width;
+      const h = rect.height;
+
+      // Scale factors from virtual 800x520 space
+      const sx = w / 800;
+      const sy = h / 520;
+
+      ctx.clearRect(0, 0, w, h);
+
+      // Clean, attractive dark backdrop
+      ctx.fillStyle = '#0a0f1d';
+      ctx.fillRect(0, 0, w, h);
+
+      // Subtle neighborhood area zones
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      ctx.beginPath();
+      ctx.roundRect(40 * sx, 30 * sy, 240 * sx, 180 * sy, 20);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.font = '600 11px Plus Jakarta Sans';
+      ctx.fillText('RPC LAYOUT', 55 * sx, 55 * sy);
+
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.45)';
+      ctx.beginPath();
+      ctx.roundRect(520 * sx, 280 * sy, 240 * sx, 180 * sy, 20);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.2)';
+      ctx.fillText('ATTIGUPPE / CHORD RD', 535 * sx, 305 * sy);
+
+      // Draw Roads
+      roads.forEach(road => {
+        let roadColor = '#10b981'; // Fluid green
+        let roadWidth = 8;
+        let glowColor = 'rgba(16, 185, 129, 0.25)';
+
+        if (road.status === 'gridlock') {
+          roadColor = '#ef4444'; // Red
+          glowColor = 'rgba(239, 68, 68, 0.45)';
+          roadWidth = 9;
+        } else if (road.status === 'slow') {
+          roadColor = '#f59e0b'; // Amber
+          glowColor = 'rgba(245, 158, 11, 0.35)';
+          roadWidth = 8.5;
+        }
+
+        // Road base shadow
+        ctx.beginPath();
+        road.points.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x * sx, pt.y * sy);
+          else ctx.lineTo(pt.x * sx, pt.y * sy);
+        });
+        ctx.strokeStyle = '#1e293b';
+        ctx.lineWidth = roadWidth + 6;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        ctx.stroke();
+
+        // Glowing road line
+        ctx.beginPath();
+        road.points.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x * sx, pt.y * sy);
+          else ctx.lineTo(pt.x * sx, pt.y * sy);
+        });
+        ctx.strokeStyle = glowColor;
+        ctx.lineWidth = roadWidth + 4;
+        ctx.stroke();
+
+        // Inner core road
+        ctx.beginPath();
+        road.points.forEach((pt, idx) => {
+          if (idx === 0) ctx.moveTo(pt.x * sx, pt.y * sy);
+          else ctx.lineTo(pt.x * sx, pt.y * sy);
+        });
+        ctx.strokeStyle = roadColor;
+        ctx.lineWidth = roadWidth;
+        ctx.stroke();
+
+        // Road label
+        const midPoint = road.points[Math.floor(road.points.length / 2)];
+        ctx.fillStyle = '#94a3b8';
+        ctx.font = '700 10px Plus Jakarta Sans';
+        ctx.fillText(road.name, midPoint.x * sx + 8, midPoint.y * sy - 8);
+      });
+
+      // Animated traffic particles
+      particles.forEach(p => {
+        const road = roads[p.roadIndex];
+        const pt = getInterpolatedPoint(road.points, p.progress);
+        
+        let pColor = '#ffffff';
+        if (road.status === 'gridlock') pColor = '#fca5a5';
+        else if (road.status === 'slow') pColor = '#fde68a';
+
+        ctx.beginPath();
+        ctx.arc(pt.x * sx, pt.y * sy, 3, 0, Math.PI * 2);
+        ctx.fillStyle = pColor;
+        ctx.shadowColor = pColor;
+        ctx.shadowBlur = 6;
+        ctx.fill();
+        ctx.shadowBlur = 0;
+
+        let speed = road.status === 'gridlock' ? 0.0006 : road.status === 'slow' ? 0.0018 : 0.004;
+        p.progress += speed;
+        if (p.progress > 1) p.progress = 0;
+      });
+
+      // Dependency lines between nodes
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.2)';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      // BESCOM to TTMC & GLR
+      ctx.beginPath();
+      ctx.moveTo(220 * sx, 260 * sy);
+      ctx.lineTo(440 * sx, 220 * sy);
+      ctx.lineTo(380 * sx, 340 * sy);
+      ctx.lineTo(490 * sx, 410 * sy);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw Nodes
+      nodes.forEach(node => {
+        const color = typeColors[node.type];
+        const isCritical = node.status === 'critical';
+        const isWarning = node.status === 'warning';
+        const isMitigatedNode = node.status === 'mitigated';
+
+        let nodeColor = color;
+        if (isCritical) nodeColor = '#ef4444';
+        else if (isWarning) nodeColor = '#f59e0b';
+        else if (isMitigatedNode) nodeColor = '#10b981';
+
+        const nx = node.x * sx;
+        const ny = node.y * sy;
+
+        // Critical pulse ring
+        if (isCritical) {
+          ctx.beginPath();
+          ctx.arc(nx, ny, 24 + Math.sin(Date.now() / 200) * 4, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.25)';
+          ctx.fill();
+        }
+
+        // Node circle
+        ctx.beginPath();
+        ctx.arc(nx, ny, 10, 0, Math.PI * 2);
+        ctx.fillStyle = '#0f172a';
+        ctx.fill();
+        ctx.strokeStyle = nodeColor;
+        ctx.lineWidth = 3.5;
+        ctx.stroke();
+
+        // Inner glowing core
+        ctx.beginPath();
+        ctx.arc(nx, ny, 4, 0, Math.PI * 2);
+        ctx.fillStyle = nodeColor;
+        ctx.fill();
+
+        // Node Badge Label
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
+        ctx.beginPath();
+        const textW = ctx.measureText(node.name).width + 16;
+        ctx.roundRect(nx - textW / 2, ny + 15, textW, 20, 6);
+        ctx.fill();
+        ctx.strokeStyle = nodeColor + '80';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '800 10.5px Plus Jakarta Sans';
+        ctx.textAlign = 'center';
+        ctx.fillText(node.name, nx, ny + 29);
+        ctx.textAlign = 'start';
+      });
+
+      requestAnimationFrame(renderMap);
+    }
+
+    // Node click handler
+    canvas.addEventListener('click', (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const sx = rect.width / 800;
+      const sy = rect.height / 520;
+
+      nodes.forEach(node => {
+        const nx = node.x * sx;
+        const ny = node.y * sy;
+        const dist = Math.hypot(clickX - nx, clickY - ny);
+        if (dist < 25) {
+          handleNodeClick(node.id);
+        }
+      });
+    });
+
+    function handleNodeClick(id) {
+      const node = nodes.find(n => n.id === id);
+      if (!node) return;
+      playTone(550, 'sine', 0.1);
+
+      const inspector = document.getElementById('node-inspector');
+      inspector.classList.remove('translate-y-full');
+
+      document.getElementById('inspector-title').textContent = node.name;
+      document.getElementById('inspector-badge').textContent = node.type.substring(0, 3).toUpperCase();
+      document.getElementById('inspector-status').textContent = `STATUS: ${node.status.toUpperCase()} (${node.load}% LOAD)`;
+
+      let desc = '', upstream = '', downstream = '';
+      if (node.id === 'bescom_rpc') {
+        desc = 'BESCOM Vijayanagar 66/11kV Substation in RPC Layout. Powers West of Chord Road traffic lights and Pipeline Rd GLR.';
+        upstream = 'KPTCL Peenya 220kV Grid Line';
+        downstream = 'Chord Road Signals, Maruti Mandir, BGS Hospital';
+      } else if (node.id === 'vjy_metro_ttmc') {
+        desc = 'Vijayanagar TTMC & Namma Metro Hub. Handles 35,000 commuters daily along West of Chord Road.';
+        upstream = 'BESCOM RPC Substation';
+        downstream = 'BGS Hospital Ambulance Access Corridor';
+      } else if (node.id === 'maruti_mandir_jn') {
+        desc = 'Maruti Mandir Junction on Pipeline Road. Vital arterial connecting RPC Layout with Magadi Road.';
+        upstream = 'West of Chord Road Arterial';
+        downstream = 'Vijayanagar GLR Booster Corridor';
+      } else if (node.id === 'bwssb_glr') {
+        desc = 'BWSSB Vijayanagar Ground Level Reservoir. Distributes Cauvery drinking water across West Bengaluru.';
+        upstream = 'BESCOM RPC Substation';
+        downstream = 'Fire Hydrants, Domestic Water Grid';
+      } else if (node.id === 'bgs_hospital') {
+        desc = 'BGS Gleneagles Multispeciality Trauma Hospital. Critical emergency trauma hub for West Bengaluru.';
+        upstream = '17th Cross Arterial (TTMC)';
+        downstream = 'Life-Safety Acute Care';
+      } else {
+        desc = 'Magadi Road Toll Gate entrance into Vijayanagar. Major northern vehicular choke point.';
+        upstream = 'Outer Magadi Corridor';
+        downstream = 'West of Chord Road';
+      }
+
+      document.getElementById('inspector-desc').textContent = desc;
+      document.getElementById('inspector-upstream').textContent = upstream;
+      document.getElementById('inspector-downstream').textContent = downstream;
+    }
+
+    function closeInspector() {
+      document.getElementById('node-inspector').classList.add('translate-y-full');
+    }
+
+    // --- AUDIO SYNTHESIZER ---
+    let audioCtx = null;
+    let isAudioMuted = false;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    function playTone(freq, type, duration, gainVal = 0.1) {
+      if (isAudioMuted) return;
+      try {
+        initAudio();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(gainVal, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch(e) {}
+    }
+    function playAlarm() {
+      playTone(520, 'sawtooth', 0.25, 0.15);
+      setTimeout(() => playTone(680, 'sawtooth', 0.25, 0.15), 260);
+    }
+    function playChime() {
+      playTone(523.25, 'sine', 0.2, 0.1);
+      setTimeout(() => playTone(659.25, 'sine', 0.2, 0.1), 150);
+      setTimeout(() => playTone(783.99, 'sine', 0.35, 0.12), 300);
+    }
+    function toggleAudio() {
+      isAudioMuted = !isAudioMuted;
+      const icon = document.getElementById('audio-icon');
+      if (isAudioMuted) {
+        icon.setAttribute('data-lucide', 'volume-x');
+        icon.className = 'w-4 h-4 text-slate-500';
+      } else {
+        icon.setAttribute('data-lucide', 'volume-2');
+        icon.className = 'w-4 h-4 text-cyan-400';
+        playTone(440, 'sine', 0.15);
+      }
+      lucide.createIcons();
+    }
+
+    // --- SCENARIO & CASCADE PROPAGATION ---
+    function runScenario(type) {
+      activeScenario = type;
+      isMitigated = false;
+      document.getElementById('cascade-alert-pill').classList.remove('hidden');
+
+      if (type === 'flood') {
+        roads[1].status = 'gridlock'; // Pipeline Road
+        roads[0].status = 'slow';     // West of Chord Road
+        nodes.find(n => n.id === 'maruti_mandir_jn').status = 'critical';
+        nodes.find(n => n.id === 'bwssb_glr').status = 'warning';
+
+        updateMetrics({
+          resilience: '64.8%',
+          grid: '72 MW',
+          traffic: '18 km/h',
+          water: '42 PSI',
+          emg: '9.5 min'
+        });
+
+        updateAIBrain(
+          'Pipeline Road Rupture Injected',
+          '36-inch Cauvery main ruptured at Maruti Mandir. Flooding diverts traffic to West of Chord Road; BESCOM RPC vault threatened.',
+          '68% Ripple Probability',
+          68
+        );
+        logRipple('WATER', '36" Cauvery main burst at Maruti Mandir. 2.5ft flood submerges Pipeline Road.');
+        playAlarm();
+        enableMitigateButton();
+      } else if (type === 'heatwave') {
+        nodes.find(n => n.id === 'bescom_rpc').status = 'critical';
+        roads[0].status = 'slow';
+        updateMetrics({
+          resilience: '54.2%',
+          grid: '94 MW',
+          traffic: '14 km/h',
+          water: '68 PSI',
+          emg: '12.0 min'
+        });
+        updateAIBrain(
+          'BESCOM RPC Substation Overheat',
+          'Thermal trip warning on 66kV transformer in RPC Layout. Traffic signals flickering along West of Chord Road.',
+          '82% Ripple Probability',
+          82
+        );
+        logRipple('POWER', 'RPC Layout transformer reached 94MW capacity. Signal blackout imminent.');
+        playAlarm();
+        enableMitigateButton();
+      } else if (type === 'transit') {
+        roads[0].status = 'gridlock';
+        nodes.find(n => n.id === 'vjy_metro_ttmc').status = 'critical';
+        nodes.find(n => n.id === 'bgs_hospital').status = 'warning';
+        updateMetrics({
+          resilience: '44.0%',
+          grid: '75 MW',
+          traffic: '6 km/h',
+          water: '88 PSI',
+          emg: '19.5 min'
+        });
+        updateAIBrain(
+          'Vijayanagar TTMC Transit Gridlock',
+          'Metro traction power dip displaced 35,000 riders. West of Chord Road blocked; BGS Trauma ambulance trapped.',
+          '89% Ripple Probability',
+          89
+        );
+        logRipple('MOBILITY', 'Vijayanagar TTMC paralyzed. Arterial gridlock extending to Toll Gate.');
+        playAlarm();
+        enableMitigateButton();
+      }
+    }
+
+    function setTimelineStep(step) {
+      currentTimelineStep = step;
+      [0, 1, 2, 3].forEach(s => {
+        const btn = document.getElementById(`t-btn-${s}`);
+        btn.className = s === step ? "px-2.5 py-1 rounded-lg bg-cyan-500 text-slate-950 font-black" : "px-2.5 py-1 rounded-lg text-slate-400 hover:text-white";
+      });
+
+      if (step === 0) {
+        resetToEquilibrium();
+      } else if (step === 1) {
+        if (!activeScenario) runScenario('flood');
+      } else if (step === 2) {
+        // T+30m cascade
+        roads[0].status = 'gridlock';
+        roads[1].status = 'gridlock';
+        nodes.find(n => n.id === 'vjy_metro_ttmc').status = 'critical';
+        nodes.find(n => n.id === 'bgs_hospital').status = 'warning';
+        updateMetrics({
+          resilience: '38.2%',
+          grid: '88 MW',
+          traffic: '8 km/h',
+          water: '38 PSI',
+          emg: '17.0 min'
+        });
+        logRipple('CASCADE', 'T+30m: Flooding reached RPC Substation perimeter. Chord Road traffic gridlocked.');
+        playAlarm();
+      } else if (step === 3) {
+        // T+60m total crisis
+        roads.forEach(r => r.status = 'gridlock');
+        nodes.forEach(n => n.status = 'critical');
+        updateMetrics({
+          resilience: '28.2%',
+          grid: '98 MW',
+          traffic: '4 km/h',
+          water: '22 PSI',
+          emg: '22.5 min'
+        });
+        logRipple('CRITICAL', 'T+60m: Full sector gridlock! BGS Trauma ambulance response time exceeded 22 minutes.');
+        playAlarm();
+      }
+    }
+
+    function deployMitigation() {
+      isMitigated = true;
+      roads.forEach(r => r.status = 'fluid');
+      nodes.forEach(n => n.status = 'mitigated');
+
+      updateMetrics({
+        resilience: '97.1%',
+        grid: '62 MW',
+        traffic: '36 km/h',
+        water: '90 PSI',
+        emg: '4.5 min'
+      });
+
+      updateAIBrain(
+        'AI Autonomous Mitigation Successful',
+        'BWSSB Pipeline Rd valve isolated; BESCOM load shed to Peenya grid; BTP Green-Wave cleared Chord Road for BGS Hospital.',
+        '0% Ripple Risk (Equilibrium)',
+        0
+      );
+
+      document.getElementById('btn-mitigate').disabled = true;
+      document.getElementById('btn-mitigate').className = "w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 cursor-default flex items-center justify-center gap-2";
+      document.getElementById('btn-mitigate').innerHTML = '<i data-lucide="check-circle" class="w-4 h-4"></i> Municipal Playbook Active (Restored)';
+
+      document.getElementById('cascade-alert-pill').classList.add('hidden');
+      logRipple('AI_ACTION', 'Executed 3-Agency Autonomous Playbook: BWSSB + BESCOM + BTP.');
+      logRipple('AI_ACTION', 'Trauma ambulance clearway restored: 4.5 min ETA to BGS Hospital.');
+      playChime();
+      lucide.createIcons();
+
+      // Notify citizen portal
+      if (activeChannel) {
+        try {
+          activeChannel.postMessage({
+            type: 'STATUS_UPDATE',
+            incidentId: 'INC-VJY-4891',
+            newStatus: 'AI REPAIRED & STABILIZED',
+            statusColor: 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30',
+            details: 'Municipal AI automated valve isolation & traffic clearway. Normalcy restored.'
+          });
+        } catch(e) {}
+      }
+    }
+
+    function resetToEquilibrium() {
+      activeScenario = null;
+      isMitigated = false;
+      roads.forEach(r => r.status = 'fluid');
+      nodes.forEach(n => n.status = 'nominal');
+
+      updateMetrics({
+        resilience: '96.4%',
+        grid: '64 MW',
+        traffic: '38 km/h',
+        water: '92 PSI',
+        emg: '4.2 min'
+      });
+
+      updateAIBrain(
+        'Vijayanagar Sector In Equilibrium',
+        'BESCOM RPC Substation, West of Chord Road traffic, and BWSSB Pipeline Road reservoir operating within safe parameters.',
+        '0% Risk',
+        0
+      );
+
+      document.getElementById('btn-mitigate').disabled = true;
+      document.getElementById('btn-mitigate').className = "w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-slate-800 text-slate-500 cursor-not-allowed flex items-center justify-center gap-2";
+      document.getElementById('btn-mitigate').innerHTML = '<i data-lucide="zap" class="w-4 h-4"></i> Deploy AI Auto-Mitigation Playbook';
+      document.getElementById('cascade-alert-pill').classList.add('hidden');
+      lucide.createIcons();
+    }
+
+    function updateMetrics(m) {
+      document.getElementById('vitals-resilience').textContent = m.resilience;
+      document.getElementById('vitals-traffic').textContent = m.traffic;
+      document.getElementById('vitals-emg').textContent = m.emg;
+      document.getElementById('traffic-legend-status').textContent = m.traffic;
+
+      document.getElementById('metric-power-val').textContent = m.grid;
+      document.getElementById('metric-traffic-val').textContent = m.traffic;
+      document.getElementById('metric-water-val').textContent = m.water;
+      document.getElementById('metric-emg-val').textContent = m.emg;
+
+      const resVal = parseFloat(m.resilience);
+      const resEl = document.getElementById('vitals-resilience');
+      const tagEl = document.getElementById('resilience-tag');
+      const dotEl = document.getElementById('vitals-status-dot');
+      const badgeEl = document.getElementById('vitals-status-badge');
+
+      if (resVal < 50) {
+        resEl.className = 'mono text-3xl font-black text-rose-500';
+        tagEl.className = 'text-xs font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full';
+        tagEl.textContent = 'Critical Cascade';
+        dotEl.className = 'h-2.5 w-2.5 rounded-full bg-rose-500 animate-ping';
+        badgeEl.className = 'font-bold px-2 py-0.5 rounded bg-rose-500/10 text-rose-400 border border-rose-500/20';
+        badgeEl.textContent = 'CRITICAL CASCADE';
+      } else if (resVal < 80) {
+        resEl.className = 'mono text-3xl font-black text-amber-400';
+        tagEl.className = 'text-xs font-bold text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-full';
+        tagEl.textContent = 'Degraded';
+        dotEl.className = 'h-2.5 w-2.5 rounded-full bg-amber-500 animate-ping';
+        badgeEl.className = 'font-bold px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/20';
+        badgeEl.textContent = 'DEGRADED';
+      } else {
+        resEl.className = 'mono text-3xl font-black text-emerald-400';
+        tagEl.className = 'text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full';
+        tagEl.textContent = 'Equilibrium';
+        dotEl.className = 'h-2.5 w-2.5 rounded-full bg-emerald-500 animate-ping';
+        badgeEl.className = 'font-bold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20';
+        badgeEl.textContent = 'EQUILIBRIUM';
+      }
+    }
+
+    function updateAIBrain(title, desc, probText, probPct) {
+      document.getElementById('ai-alert-title').textContent = title;
+      document.getElementById('ai-alert-text').textContent = desc;
+      document.getElementById('cascade-probability').textContent = probText;
+      document.getElementById('cascade-prob-bar').style.width = probPct + '%';
+
+      const icon = document.getElementById('ai-alert-icon');
+      if (probPct > 50) {
+        icon.setAttribute('data-lucide', 'alert-triangle');
+        icon.className = 'w-4 h-4 text-rose-400 mt-0.5';
+      } else {
+        icon.setAttribute('data-lucide', 'check-circle');
+        icon.className = 'w-4 h-4 text-emerald-400 mt-0.5';
+      }
+      lucide.createIcons();
+    }
+
+    function enableMitigateButton() {
+      const btn = document.getElementById('btn-mitigate');
+      btn.disabled = false;
+      btn.className = "w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-wider bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-slate-950 cursor-pointer transition shadow-xl shadow-emerald-500/20 animate-bounce";
+      btn.innerHTML = '<i data-lucide="zap" class="w-4 h-4 fill-slate-950"></i> Deploy AI Auto-Mitigation Playbook';
+      lucide.createIcons();
+    }
+
+    function logRipple(tag, text) {
+      const log = document.getElementById('ripple-log');
+      const time = new Date().toLocaleTimeString();
+      const div = document.createElement('div');
+      div.className = "p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-slate-300 flex items-start gap-2 animate-fadeIn";
+      
+      let tagColor = 'text-cyan-400';
+      if (tag === 'CRITICAL' || tag === 'WATER') tagColor = 'text-rose-400';
+      else if (tag === 'POWER') tagColor = 'text-amber-400';
+      else if (tag === 'AI_ACTION') tagColor = 'text-emerald-400';
+
+      div.innerHTML = `
+        <span class="${tagColor} font-bold">[${tag}]</span>
+        <div class="flex-1">
+          <span class="text-slate-200">${text}</span>
+          <span class="block text-[10px] text-slate-500 mt-0.5">${time}</span>
+        </div>
+      `;
+      log.prepend(div);
+    }
+
+    // --- 60s JURY DEMO AUTO-PILOT ---
+    function toggleAutoPilot() {
+      if (autoPilotActive) stopAutoPilot();
+      else startAutoPilot();
+    }
+
+    function startAutoPilot() {
+      autoPilotActive = true;
+      autoPilotStep = 1;
+      document.getElementById('autopilot-banner').classList.remove('hidden');
+      document.getElementById('autopilot-text').textContent = '⏹ Stop Jury Demo';
+      document.getElementById('autopilot-icon').setAttribute('data-lucide', 'square');
+      lucide.createIcons();
+      runAutoPilotStep1();
+    }
+
+    function stopAutoPilot() {
+      autoPilotActive = false;
+      clearTimeout(autoPilotTimer);
+      document.getElementById('autopilot-banner').classList.add('hidden');
+      document.getElementById('autopilot-text').textContent = '▶ 60s Jury Presentation';
+      document.getElementById('autopilot-icon').setAttribute('data-lucide', 'play');
+      lucide.createIcons();
+      resetToEquilibrium();
+    }
+
+    function updateAutoPilotCaption(step, text) {
+      document.getElementById('autopilot-step-badge').textContent = `Step ${step}/5`;
+      document.getElementById('autopilot-caption').textContent = text;
+    }
+
+    function runAutoPilotStep1() {
+      if (!autoPilotActive) return;
+      setTimelineStep(0);
+      updateAutoPilotCaption(1, "1/5: Vijayanagar Sector in harmony. Power (BESCOM RPC), Traffic (West of Chord Rd), and Water (GLR) operating smoothly.");
+      playTone(440, 'sine', 0.2);
+      autoPilotTimer = setTimeout(runAutoPilotStep2, 6000);
+    }
+
+    function runAutoPilotStep2() {
+      if (!autoPilotActive) return;
+      updateAutoPilotCaption(2, "2/5: Citizen Aarav Sharma reports a ruptured 36-inch Cauvery main on Pipeline Road with live photo verification!");
+      openCitizenModal();
+      playAlarm();
+      autoPilotTimer = setTimeout(runAutoPilotStep3, 6000);
+    }
+
+    function runAutoPilotStep3() {
+      if (!autoPilotActive) return;
+      closeCitizenModal();
+      setTimelineStep(1);
+      updateAutoPilotCaption(3, "3/5: At T+15m, the domino cascade starts! Pipeline Road floods, diverting traffic onto West of Chord Road.");
+      playAlarm();
+      autoPilotTimer = setTimeout(runAutoPilotStep4, 6500);
+    }
+
+    function runAutoPilotStep4() {
+      if (!autoPilotActive) return;
+      setTimelineStep(3);
+      updateAutoPilotCaption(4, "4/5: At T+60m, severe gridlock! BGS Trauma ambulance delayed to 22 minutes! Resilience plummets to 28%!");
+      playAlarm();
+      autoPilotTimer = setTimeout(runAutoPilotStep5, 7000);
+    }
+
+    function runAutoPilotStep5() {
+      if (!autoPilotActive) return;
+      updateAutoPilotCaption(5, "5/5: AI Pre-Emptive Mitigation deploying! Valves isolated, traffic green-waved, city resilience rebounds to 97%!");
+      deployMitigation();
+      autoPilotTimer = setTimeout(() => {
+        if (!autoPilotActive) return;
+        updateAutoPilotCaption(5, "Demo Complete: Cross-infrastructure domino failure averted in 60 seconds!");
+      }, 7000);
+    }
+
+    // --- CITIZEN BROADCASTCHANNEL PROTOCOL ---
+    let activeChannel = null;
+    try {
+      activeChannel = new BroadcastChannel('synchrocity_channel');
+      activeChannel.onmessage = (event) => {
+        handleIncomingCitizenData(event.data);
+      };
+    } catch(e) {}
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'synchrocity_latest_incident') {
+        try {
+          const data = JSON.parse(e.newValue);
+          handleIncomingCitizenData(data);
+        } catch(err) {}
+      }
+    });
+
+    let latestIncident = {
+      incidentId: 'INC-VJY-4891',
+      citizenName: 'Aarav Sharma',
+      citizenId: '#VJY-88492',
+      category: 'burst_pipe',
+      categoryLabel: 'Burst Cauvery Water Main / Road Flooding',
+      location: 'Vijayanagar Pipeline Road · Maruti Mandir Jn',
+      description: 'Massive water geyser from ruptured 36-inch Cauvery main on Pipeline Road! Maruti Mandir junction submerged under 2.5 feet of water, traffic diverting to West of Chord Road, RPC Layout electrical vault threatened.',
+      imageData: 'data:image/svg+xml;utf8,' + encodeURIComponent(`
+        <svg xmlns="http://www.w3.org/2000/svg" width="600" height="400" viewBox="0 0 600 400">
+          <rect width="600" height="400" fill="#0f172a"/>
+          <line x1="0" y1="280" x2="600" y2="280" stroke="#f59e0b" stroke-width="4" stroke-dasharray="25,25"/>
+          <ellipse cx="280" cy="270" rx="90" ry="35" fill="#020617" stroke="#38bdf8" stroke-width="4"/>
+          <ellipse cx="300" cy="300" rx="200" ry="60" fill="rgba(6, 182, 212, 0.45)" stroke="rgba(56, 189, 248, 0.7)" stroke-width="3"/>
+          <path d="M260,260 Q280,60 290,50 Q300,60 320,260 Z" fill="rgba(224, 242, 254, 0.85)"/>
+          <rect x="20" y="20" width="280" height="35" rx="8" fill="rgba(0,0,0,0.7)"/>
+          <text x="35" y="42" fill="#38bdf8" font-family="sans-serif" font-size="12" font-weight="bold">VIJAYANAGAR CITIZEN UPLOAD</text>
+        </svg>
+      `)
+    };
+
+    function handleIncomingCitizenData(data) {
+      if (!data || data.type !== 'NEW_CITIZEN_INCIDENT') return;
+      latestIncident = data;
+
+      document.getElementById('toast-inc-id').textContent = data.incidentId;
+      document.getElementById('toast-inc-title').textContent = data.categoryLabel;
+      document.getElementById('toast-inc-desc').textContent = data.location;
+      document.getElementById('admin-incident-toast').classList.remove('hidden');
+
+      playAlarm();
+      logRipple('CITIZEN', `New incoming incident: ${data.incidentId} from ${data.location}`);
+    }
+
+    function dismissToast() {
+      document.getElementById('admin-incident-toast').classList.add('hidden');
+    }
+
+    function openVerificationFromToast() {
+      dismissToast();
+      openCitizenModal();
+    }
+
+    function openCitizenModal() {
+      document.getElementById('disp-citizen-id').textContent = 'ID: ' + latestIncident.citizenId;
+      document.getElementById('disp-citizen-name').textContent = latestIncident.citizenName + ' (Vijayanagar Resident)';
+      document.getElementById('disp-report-category').textContent = latestIncident.categoryLabel;
+      document.getElementById('disp-report-loc').textContent = latestIncident.location;
+      document.getElementById('disp-report-desc').textContent = latestIncident.description;
+      document.getElementById('disp-modal-image').src = latestIncident.imageData;
+
+      document.getElementById('citizen-modal').classList.remove('hidden');
+      playTone(500, 'sine', 0.1);
+    }
+
+    function closeCitizenModal() {
+      document.getElementById('citizen-modal').classList.add('hidden');
+    }
+
+    function authorityInjectRipple() {
+      closeCitizenModal();
+      runScenario('flood');
+      logRipple('AUTHORITY', `Admin verified photo for ${latestIncident.incidentId}. Injected ripple into Vijayanagar twin.`);
+      
+      if (activeChannel) {
+        try {
+          activeChannel.postMessage({
+            type: 'STATUS_UPDATE',
+            incidentId: latestIncident.incidentId,
+            newStatus: 'VERIFIED & SCADA LINKED',
+            statusColor: 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30',
+            details: 'Municipal AI authenticated photo evidence. Cross-system ripple injected into Vijayanagar Twin.'
+          });
+        } catch(e) {}
+      }
+    }
+
+    // --- 5-SLIDE JURY PITCH DECK ---
+    const slideDeckData = [
+      {
+        title: "The Silent Crisis: Cities Fail in Invisible Dominos",
+        subtitle: "Why traditional siloed urban management breaks down",
+        body: `
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <span class="mono text-amber-400 text-lg font-bold block mb-1">⚡ Power Silo</span>
+              <p class="text-xs text-slate-400">Substation overheats &rarr; Trips without warning traffic signals.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <span class="mono text-cyan-400 text-lg font-bold block mb-1">🚦 Traffic Silo</span>
+              <p class="text-xs text-slate-400">Signals dark &rarr; Arterial gridlock delays trauma ambulances.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800">
+              <span class="mono text-emerald-400 text-lg font-bold block mb-1">💧 Water Silo</span>
+              <p class="text-xs text-slate-400">Burst main floods road &rarr; BESCOM vaults threatened.</p>
+            </div>
+          </div>
+          <p class="text-xs text-slate-300">Each department uses separate software. Nobody sees the domino effect until the entire city is crippled.</p>
+        `
+      },
+      {
+        title: "The Solution: SynchroCity Cross-Domain Digital Twin",
+        subtitle: "One unified real-time dependency graph for the whole city",
+        body: `
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 my-4 text-xs space-y-2">
+            <div class="flex items-center gap-2 text-cyan-400 font-bold">
+              <i data-lucide="check" class="w-4 h-4"></i> Cross-Infrastructure Causal Mesh
+            </div>
+            <p class="text-slate-400">Models physical dependencies between power substations, traffic lights, water valves, and hospital corridors.</p>
+            <div class="flex items-center gap-2 text-emerald-400 font-bold mt-2">
+              <i data-lucide="check" class="w-4 h-4"></i> Predictive Domino Simulation
+            </div>
+            <p class="text-slate-400">Projects failure propagation 15, 30, and 60 minutes into the future before problems escalate.</p>
+          </div>
+        `
+      },
+      {
+        title: "Citizen Ground Truth: Verified in <2 Seconds",
+        subtitle: "Bridging the gap between the public and city operators",
+        body: `
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 my-4">
+            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="font-bold text-white block mb-1">Citizen Portal</span>
+              <p class="text-slate-400">Citizens report burst pipes or transformer sparks with instant smartphone photos.</p>
+            </div>
+            <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-xs">
+              <span class="font-bold text-white block mb-1">AI Computer Vision Scan</span>
+              <p class="text-slate-400">Scans photo authenticity, estimates rupture severity, and cross-references with SCADA pressure sensors.</p>
+            </div>
+          </div>
+        `
+      },
+      {
+        title: "Autonomous Multi-Agency Mitigation",
+        subtitle: "1-Click synchronized action across BESCOM, BBMP, and BTP",
+        body: `
+          <div class="p-4 rounded-2xl bg-slate-950 border border-slate-800 my-4 text-xs space-y-2">
+            <div class="flex justify-between items-center text-slate-300">
+              <span>1. BWSSB Valve Isolation:</span>
+              <span class="font-bold text-emerald-400">Stop 36" Pipe Water Loss</span>
+            </div>
+            <div class="flex justify-between items-center text-slate-300">
+              <span>2. BTP Dynamic Green-Wave:</span>
+              <span class="font-bold text-cyan-400">Clear BGS Trauma Ambulance Corridor</span>
+            </div>
+            <div class="flex justify-between items-center text-slate-300">
+              <span>3. BESCOM Grid Reroute:</span>
+              <span class="font-bold text-amber-400">Shift 18MW load to Peenya Substation</span>
+            </div>
+          </div>
+          <p class="text-xs text-emerald-400 font-bold">City Resilience rebounds from 28.2% back to 97.1%!</p>
+        `
+      },
+      {
+        title: "Why SynchroCity Wins Problem Statement #2",
+        subtitle: "Ready for deployment, zero setup, maximum measurable impact",
+        body: `
+          <div class="grid grid-cols-2 gap-3 my-4 text-xs">
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <span class="font-bold text-white block">100% Turnkey</span>
+              <span class="text-slate-400">Runs directly in browser; zero compilation or keys required.</span>
+            </div>
+            <div class="p-3 rounded-xl bg-slate-950 border border-slate-800">
+              <span class="font-bold text-white block">75% Faster Response</span>
+              <span class="text-slate-400">Cuts multi-agency coordination time from 45 min to seconds.</span>
+            </div>
+          </div>
+          <p class="text-center text-cyan-400 font-extrabold text-sm mt-3">Transforming Indian Cities from Reactive Chaos to Predictive Harmony.</p>
+        `
+      }
+    ];
+
+    let currentSlide = 0;
+    function openSlideDeck() {
+      currentSlide = 0;
+      renderSlide();
+      document.getElementById('slides-modal').classList.remove('hidden');
+    }
+    function closeSlideDeck() {
+      document.getElementById('slides-modal').classList.add('hidden');
+    }
+    function renderSlide() {
+      const slide = slideDeckData[currentSlide];
+      document.getElementById('slide-number-indicator').textContent = `Slide ${currentSlide + 1} / ${slideDeckData.length}`;
+      document.getElementById('slide-content').innerHTML = `
+        <h3 class="text-2xl font-black text-white">${slide.title}</h3>
+        <p class="text-xs text-cyan-400 font-semibold mt-1">${slide.subtitle}</p>
+        <div class="mt-4">${slide.body}</div>
+      `;
+      const dots = document.getElementById('slide-dots');
+      dots.innerHTML = slideDeckData.map((_, i) => `
+        <div class="w-2.5 h-2.5 rounded-full ${i === currentSlide ? 'bg-cyan-400 w-6' : 'bg-slate-700'} transition-all"></div>
+      `).join('');
+      lucide.createIcons();
+    }
+    function nextSlide() {
+      if (currentSlide < slideDeckData.length - 1) {
+        currentSlide++;
+        renderSlide();
+      } else {
+        closeSlideDeck();
+      }
+    }
+    function prevSlide() {
+      if (currentSlide > 0) {
+        currentSlide--;
+        renderSlide();
+      }
+    }
+
+    // --- INITIALIZE ON WINDOW LOAD ---
+    window.onload = () => {
+      resizeCanvas();
+      initParticles();
+      renderMap();
+      lucide.createIcons();
+
+      setInterval(() => {
+        const timeEl = document.getElementById('live-time');
+        if (timeEl) timeEl.textContent = new Date().toLocaleTimeString() + ' IST';
+      }, 1000);
+    };
+  </script>
+</body>
+</html>
